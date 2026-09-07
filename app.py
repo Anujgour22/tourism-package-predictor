@@ -121,25 +121,27 @@ Designation = st.selectbox(
 if st.button("Predict"):
 
     input_data = pd.DataFrame([{
-        "Age": Age,
-        "TypeofContact": TypeofContact,
-        "CityTier": CityTier,
-        "DurationOfPitch": DurationOfPitch,
-        "Occupation": Occupation,
-        "Gender": Gender,
-        "NumberOfPersonVisiting": NumberOfPersonVisiting,
-        "NumberOfFollowups": NumberOfFollowups,
-        "ProductPitched": ProductPitched,
-        "PreferredPropertyStar": PreferredPropertyStar,
-        "MaritalStatus": MaritalStatus,
-        "NumberOfTrips": NumberOfTrips,
-        "Passport": Passport,
-        "PitchSatisfactionScore": PitchSatisfactionScore,
-        "OwnCar": OwnCar,
-        "NumberOfChildrenVisiting": NumberOfChildrenVisiting,
-        "MonthlyIncome": MonthlyIncome,
-        "Designation": Designation
-    }])
+    "Unnamed: 0": 0,
+    "Age": Age,
+    "TypeofContact": TypeofContact,
+    "CityTier": CityTier,
+    "DurationOfPitch": DurationOfPitch,
+    "Occupation": Occupation,
+    "Gender": Gender,
+    "NumberOfPersonVisiting": NumberOfPersonVisiting,
+    "NumberOfFollowups": NumberOfFollowups,
+    "ProductPitched": ProductPitched,
+    "PreferredPropertyStar": PreferredPropertyStar,
+    "MaritalStatus": MaritalStatus,
+    "NumberOfTrips": NumberOfTrips,
+    "Passport": Passport,
+    "PitchSatisfactionScore": PitchSatisfactionScore,
+    "OwnCar": OwnCar,
+    "NumberOfChildrenVisiting": NumberOfChildrenVisiting,
+    "MonthlyIncome": MonthlyIncome,
+    "Designation": Designation
+}])
+    
 
     prediction = model.predict(input_data)[0]
 
