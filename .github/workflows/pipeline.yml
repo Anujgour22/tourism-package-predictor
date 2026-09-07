@@ -115,7 +115,7 @@ jobs:
           print("Train shape:", train_df.shape)
           print("Test shape:", test_df.shape)
 
-          # Upload prepared data back to Hugging Face
+          # Upload prepared data to Hugging Face
           api = HfApi(token="${{ secrets.HF_TOKEN }}")
 
           api.upload_file(
@@ -156,15 +156,17 @@ jobs:
         run: |
           pip install pandas numpy scikit-learn joblib mlflow huggingface_hub
 
-      - name: Train Model
+      - name: Download Prepared Data and Train Model
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           python - <<'PY'
+          import os
           import pandas as pd
           import joblib
           import mlflow
-          import mlflow.sklearn
+
+          from huggingface_hub import hf_hub_download, HfApi
 
           from sklearn.compose import ColumnTransformer
           from sklearn.pipeline import Pipeline
@@ -179,18 +181,44 @@ jobs:
               roc_auc_score
           )
 
-          from huggingface_hub import HfApi
+          # -----------------------------
+          # Download prepared data
+          # -----------------------------
+          repo_id = "Anujgour47/tourism-customer-data"
 
-          # Load prepared data
-          train_df = pd.read_csv("train.csv")
-          test_df = pd.read_csv("test.csv")
+          train_path = hf_hub_download(
+              repo_id=repo_id,
+              filename="train.csv",
+              repo_type="dataset",
+              token=os.environ["HF_TOKEN"]
+          )
 
+          test_path = hf_hub_download(
+              repo_id=repo_id,
+              filename="test.csv",
+              repo_type="dataset",
+              token=os.environ["HF_TOKEN"]
+          )
+
+          train_df = pd.read_csv(train_path)
+          test_df = pd.read_csv(test_path)
+
+          print("Prepared data downloaded successfully.")
+          print("Train shape:", train_df.shape)
+          print("Test shape:", test_df.shape)
+
+          # -----------------------------
+          # Split features and target
+          # -----------------------------
           X_train = train_df.drop(columns=["ProdTaken"])
           y_train = train_df["ProdTaken"]
 
           X_test = test_df.drop(columns=["ProdTaken"])
           y_test = test_df["ProdTaken"]
 
+          # -----------------------------
+          # Feature preprocessing
+          # -----------------------------
           numeric_features = X_train.select_dtypes(
               include=["int64", "float64"]
           ).columns.tolist()
@@ -214,8 +242,14 @@ jobs:
               ]
           )
 
+          # -----------------------------
+          # Random Forest pipeline
+          # -----------------------------
           rf_pipeline = Pipeline([
-              ("preprocessor", preprocessor),
+              (
+                  "preprocessor",
+                  preprocessor
+              ),
               (
                   "model",
                   RandomForestClassifier(
@@ -224,6 +258,9 @@ jobs:
               )
           ])
 
+          # -----------------------------
+          # Hyperparameter tuning
+          # -----------------------------
           param_grid = {
               "model__n_estimators": [100, 200],
               "model__max_depth": [None, 10, 20],
@@ -243,6 +280,9 @@ jobs:
 
           best_model = grid_search.best_estimator_
 
+          # -----------------------------
+          # Model evaluation
+          # -----------------------------
           predictions = best_model.predict(X_test)
           probabilities = best_model.predict_proba(X_test)[:, 1]
 
@@ -252,7 +292,7 @@ jobs:
           f1 = f1_score(y_test, predictions)
           roc_auc = roc_auc_score(y_test, probabilities)
 
-          print("Best Parameters:")
+          print("\nBest Parameters:")
           print(grid_search.best_params_)
 
           print("\nTest Metrics:")
@@ -262,12 +302,20 @@ jobs:
           print("F1:", f1)
           print("ROC-AUC:", roc_auc)
 
+          # -----------------------------
           # Save model
+          # -----------------------------
           model_path = "best_random_forest.pkl"
           joblib.dump(best_model, model_path)
 
+          print("\nModel saved successfully.")
+
+          # -----------------------------
           # MLflow tracking
-          mlflow.set_experiment("Tourism Package Prediction")
+          # -----------------------------
+          mlflow.set_experiment(
+              "Tourism Package Prediction"
+          )
 
           with mlflow.start_run(
               run_name="GitHub Actions - Tuned Random Forest"
@@ -303,8 +351,12 @@ jobs:
                   artifact_path="model"
               )
 
-          # Upload trained model to Hugging Face
-          api = HfApi(token="${{ secrets.HF_TOKEN }}")
+          print("MLflow tracking completed.")
+
+          # -----------------------------
+          # Upload model to Hugging Face
+          # -----------------------------
+          api = HfApi(token=os.environ["HF_TOKEN"])
 
           api.upload_file(
               path_or_fileobj=model_path,
@@ -313,7 +365,10 @@ jobs:
               repo_type="model"
           )
 
-          print("\nModel uploaded successfully to Hugging Face.")
+          print(
+              "\nModel uploaded successfully "
+              "to Hugging Face Model Hub."
+          )
           PY
 
 
